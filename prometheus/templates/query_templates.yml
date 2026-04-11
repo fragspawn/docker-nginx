@@ -1,0 +1,12 @@
+groups:
+  - name: nginx_query_templates
+    interval: 30s
+    rules:
+      - record: template:nginx:requests_per_second
+        expr: rate(nginx_http_requests_total[5m])
+
+      - record: template:nginx:bytes_sent_per_second
+        expr: rate(nginx_http_response_size_bytes_sum[5m])
+
+      - record: template:nginx:bytes_received_per_second
+        expr: rate(nginx_http_request_size_bytes_sum[5m])

@@ -1,0 +1,94 @@
+name: nginx
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    restart: unless-stopped
+    network_mode: host
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro,z
+      - ./certbot/conf:/etc/letsencrypt:ro,z
+      - nginx_logs:/var/log/nginx
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.3.0
+    container_name: nginx-exporter
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - -nginx.scrape-uri=http://127.0.0.1:9080/nginx_status
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: nginx-loki
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - -config.file=/etc/loki/loki-config.yml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:9100/ready >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:z
+      - loki_data:/loki
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: nginx-prometheus
+    restart: unless-stopped
+    depends_on:
+      nginx:
+        condition: service_healthy
+    network_mode: host
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:z
+      - ./prometheus/templates:/etc/prometheus/templates:z
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.listen-address=127.0.0.1:9090
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: nginx-promtail
+    restart: unless-stopped
+    depends_on:
+      nginx:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    network_mode: host
+    command:
+      - -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:z
+      - nginx_logs:/var/log/nginx:ro
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: nginx-grafana
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+    network_mode: host
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_SERVER_HTTP_PORT=9000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:z
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:z
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:z
+volumes:
+  nginx_logs:
+  prometheus_data:
+  loki_data:
+  grafana_data:
