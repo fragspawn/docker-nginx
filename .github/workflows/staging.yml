@@ -1,17 +1,15 @@
 name: Staging Webhook
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
-      - staging
+      - main
 
 jobs:
-  on-merge:
-    if: github.event.pull_request.merged == true
+  on-push:
     runs-on: ubuntu-latest
     steps:
-      - name: Send webhook to Komodo staging
+      - name: Send webhook to Komodo staging git pull
         run: |
           curl -X POST \
             -H "Content-Type: application/json" \
@@ -26,3 +24,19 @@ jobs:
               "head_commit_message": "${{ github.event.head_commit.message }}"
             }' \
             "${{ secrets.KOMODO_PULL }}"
+              - name: Send webhook to Komodo staging
+      - name: Send webhook to Komodo staging to re-deploy
+        run: |
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Webhook-Secret: ${{ secrets.KOMODO_WEBHOOK_SECRET }}" \
+            -d '{
+              "event": "push_to_staging",
+              "repository": "${{ github.repository }}",
+              "ref": "${{ github.ref }}",
+              "ref_name": "${{ github.ref_name }}",
+              "sha": "${{ github.sha }}",
+              "actor": "${{ github.actor }}",
+              "head_commit_message": "${{ github.event.head_commit.message }}"
+            }' \
+            "${{ secrets.KOMODO_DEPLOY }}"
