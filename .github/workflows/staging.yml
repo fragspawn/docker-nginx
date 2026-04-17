@@ -9,34 +9,35 @@ jobs:
   on-push:
     runs-on: ubuntu-latest
     steps:
-      - name: Send webhook to Komodo staging git pull
+      - name: Send webhooks to Komodo staging
         run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-Webhook-Secret: ${{ secrets.KOMODO_WEBHOOK_SECRET }}" \
-            -d '{
-              "event": "push_to_staging",
-              "repository": "${{ github.repository }}",
-              "ref": "${{ github.ref }}",
-              "ref_name": "${{ github.ref_name }}",
-              "sha": "${{ github.sha }}",
-              "actor": "${{ github.actor }}",
-              "head_commit_message": "${{ github.event.head_commit.message }}"
-            }' \
-            "${{ secrets.KOMODO_PULL }}"
-              - name: Send webhook to Komodo staging
-      - name: Send webhook to Komodo staging to re-deploy
-        run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-Webhook-Secret: ${{ secrets.KOMODO_WEBHOOK_SECRET }}" \
-            -d '{
-              "event": "push_to_staging",
-              "repository": "${{ github.repository }}",
-              "ref": "${{ github.ref }}",
-              "ref_name": "${{ github.ref_name }}",
-              "sha": "${{ github.sha }}",
-              "actor": "${{ github.actor }}",
-              "head_commit_message": "${{ github.event.head_commit.message }}"
-            }' \
-            "${{ secrets.KOMODO_DEPLOY }}"
+          set -euo pipefail
+
+          payload=$(jq -cn \
+            --arg event "push_to_staging" \
+            --arg repository "${{ github.repository }}" \
+            --arg ref "${{ github.ref }}" \
+            --arg ref_name "${{ github.ref_name }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg head_commit_message "${{ github.event.head_commit.message }}" \
+            '{
+              event: $event,
+              repository: $repository,
+              ref: $ref,
+              ref_name: $ref_name,
+              sha: $sha,
+              actor: $actor,
+              head_commit_message: $head_commit_message
+            }')
+
+          signature="sha256=$(printf '%s' "$payload" | openssl dgst -sha256 -hmac "${{ secrets.KOMODO_WEBHOOK_SECRET }}" | awk '{print $2}')"
+
+          for webhook_url in "${{ secrets.KOMODO_PULL }}" "${{ secrets.KOMODO_DEPLOY }}"; do
+            curl --fail --show-error --silent \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -H "X-Hub-Signature-256: $signature" \
+              -d "$payload" \
+              "$webhook_url"
+          done
