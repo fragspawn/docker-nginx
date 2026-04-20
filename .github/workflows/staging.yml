@@ -33,7 +33,7 @@ jobs:
 
           signature="sha256=$(printf '%s' "$payload" | openssl dgst -sha256 -hmac "${{ secrets.KOMODO_WEBHOOK_SECRET }}" | awk '{print $2}')"
 
-          for raw_webhook_url in "${{ secrets.KOMODO_PULL }}" "${{ secrets.KOMODO_BUILD }}"; do
+          for raw_webhook_url in "${{ secrets.KOMODO_BUILD }}"; do
             # Remove CR/LF that can come from copied secrets and break URL parsing.
             webhook_url="$(printf '%s' "$raw_webhook_url" | tr -d '\r\n')"
 
