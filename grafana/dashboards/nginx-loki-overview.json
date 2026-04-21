@@ -140,6 +140,27 @@
           "expr": "{job=\"nginx_error\"}"
         }
       ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Request Rate by Destination",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (destination) (rate({job=\"nginx_access\",destination=~\"$destination\"}[1m]))"
+        }
+      ]
     }
   ]
 }
