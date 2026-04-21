@@ -33,20 +33,10 @@ jobs:
 
           signature="sha256=$(printf '%s' "$payload" | openssl dgst -sha256 -hmac "${{ secrets.KOMODO_WEBHOOK_SECRET }}" | awk '{print $2}')"
 
-          for raw_webhook_url in "${{ secrets.KOMODO_BUILD }}"; do
-            # Remove CR/LF that can come from copied secrets and break URL parsing.
-            webhook_url="$(printf '%s' "$raw_webhook_url" | tr -d '\r\n')"
-
-            if [ -z "$webhook_url" ]; then
-              echo "Webhook URL is empty after normalization"
-              exit 1
-            fi
-
-            curl --fail --show-error --silent \
-              --globoff \
-              -X POST \
-              -H "Content-Type: application/json" \
-              -H "X-Hub-Signature-256: $signature" \
-              -d "$payload" \
-              "$webhook_url"
-          done
+          curl --fail --show-error \
+            --globoff \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: $signature" \
+            -d "$payload" \
+            "${{ secrets.KOMODO_BUILD }}"
