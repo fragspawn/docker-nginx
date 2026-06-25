@@ -1,12 +1,9 @@
 server:
   http_listen_port: 9088
-
 positions:
   filename: /tmp/positions.yaml
-
 clients:
   - url: http://127.0.0.1:9100/loki/api/v1/push
-
 scrape_configs:
   - job_name: nginx_access
     static_configs:
@@ -23,7 +20,6 @@ scrape_configs:
       - labels:
           status:
           destination:
-
   - job_name: nginx_error
     static_configs:
       - targets:

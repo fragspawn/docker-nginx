@@ -38,6 +38,7 @@ services:
       retries: 10
       start_period: 10s
     volumes:
+      - nginx_logs:/var/log/nginx
       - loki_data:/loki
   prometheus:
     build:
